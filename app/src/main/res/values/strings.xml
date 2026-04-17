@@ -1,3 +1,9 @@
 <resources>
-    <string name="app_name">Simon_PSE</string>
+    <string name="app_name">Simon</string>
+    <string name="red">red</string>
+    <string name="green">green</string>
+    <string name="blue">blue</string>
+    <string name="magenta">magenta</string>
+    <string name="yellow">yellow</string>
+    <string name="cyan">cyan</string>
 </resources>
