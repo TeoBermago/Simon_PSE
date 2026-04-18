@@ -6,4 +6,6 @@
     <string name="magenta">magenta</string>
     <string name="yellow">yellow</string>
     <string name="cyan">cyan</string>
+    <string name="clear">clear</string>
+    <string name="eog">end game</string>
 </resources>

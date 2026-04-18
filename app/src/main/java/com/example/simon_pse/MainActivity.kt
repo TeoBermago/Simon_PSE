@@ -1,5 +1,6 @@
 package com.example.simon_pse
 
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -24,6 +25,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -45,22 +48,45 @@ class MainActivity : ComponentActivity() {
 
 }
 
-
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
-    Column() {
-        Row(
-            modifier = modifier.fillMaxWidth(). fillMaxHeight(0.5f),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ColorButtonsGrid()
-        }
+    val orientation = LocalConfiguration.current.orientation
 
-        Row(
-            modifier = modifier.fillMaxWidth(). fillMaxHeight(0.5f),
-            //verticalAlignment = Alignment.CenterVertically
+    if(orientation == Configuration.ORIENTATION_PORTRAIT) {
+        Column(
+            modifier = modifier.fillMaxWidth().fillMaxHeight()
         ) {
-            BottomScreen1()
+            Row(
+                modifier = modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                ColorButtonsGrid()
+            }
+
+            Row(
+                modifier = modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BottomScreen1()
+            }
+        }
+    }
+
+    if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        Row( modifier = modifier.fillMaxWidth().fillMaxHeight() ) {
+            Column(
+                modifier = Modifier.fillMaxHeight().weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                ColorButtonsGrid()
+            }
+
+            Column(
+                modifier = Modifier.fillMaxHeight().weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                BottomScreen1()
+            }
         }
     }
 }
@@ -75,10 +101,8 @@ data class ButtonData(
 fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
     Button(
         onClick = onClick,
-        // Set a standard size \
-        modifier = Modifier
-            .width(150.dp)
-            .height(70.dp),
+        // Set a standard size
+        modifier = Modifier.width(120.dp).height(50.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = backgroundColor,
             contentColor = Color.Black // Text color
@@ -130,15 +154,14 @@ fun BottomScreen1() {
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-
             text = "banana"
         )
         Row(
-
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton("Cancella", Color.Gray, {})
-            StandardButton("Fine Partita", Color.Gray, {})        }
+            StandardButton(stringResource(R.string.clear), Color.Gray, {})
+            StandardButton(stringResource(R.string.eog), Color.Gray, {})
+        }
     }
 
 }
