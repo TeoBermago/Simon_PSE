@@ -27,6 +27,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -51,6 +56,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun GameScreen(modifier: Modifier = Modifier) {
     val orientation = LocalConfiguration.current.orientation
+    var displayText by rememberSaveable { mutableStateOf<String>("") }
 
     if(orientation == Configuration.ORIENTATION_PORTRAIT) {
         Column(
@@ -60,14 +66,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorButtonsGrid()
+                ColorButtonsGrid(updateText = { newText ->
+                    displayText += newText
+                })
             }
 
             Row(
                 modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BottomScreen1()
+                BottomScreen1(displayText, clearText = { ->
+                    displayText = ""
+                })
             }
         }
     }
@@ -78,14 +88,18 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                ColorButtonsGrid()
+                ColorButtonsGrid(updateText = { newText ->
+                    displayText += newText
+                })
             }
 
             Column(
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                BottomScreen1()
+                BottomScreen1(displayText, clearText = { ->
+                    displayText = ""
+                })
             }
         }
     }
@@ -114,14 +128,14 @@ fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
 }
 
 @Composable
-fun ColorButtonsGrid() {
+fun ColorButtonsGrid(updateText: (String) -> Unit) {
     val buttons = listOf(
-        ButtonData(stringResource(R.string.red), Color.Red, {}),
-        ButtonData(stringResource(R.string.green), Color.Green, {}),
-        ButtonData(stringResource(R.string.blue), Color.Blue, {}),
-        ButtonData(stringResource(R.string.magenta), Color.Magenta, {}),
-        ButtonData(stringResource(R.string.yellow), Color.Yellow, {}),
-        ButtonData(stringResource(R.string.cyan), Color.Cyan, {})
+        ButtonData(stringResource(R.string.red), Color.Red, {updateText("R, ")}),
+        ButtonData(stringResource(R.string.green), Color.Green, {updateText("G, ")}),
+        ButtonData(stringResource(R.string.blue), Color.Blue, {updateText("B, ")}),
+        ButtonData(stringResource(R.string.magenta), Color.Magenta, {updateText("M, ")}),
+        ButtonData(stringResource(R.string.yellow), Color.Yellow, {updateText("Y, ")}),
+        ButtonData(stringResource(R.string.cyan), Color.Cyan, {updateText("C, ")})
     )
 
     Column(
@@ -147,24 +161,32 @@ fun ColorButtonsGrid() {
 }
 
 @Composable
-fun BottomScreen1() {
+fun BottomScreen1(text: String, clearText: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Text(
-            text = "banana"
+            text
         )
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton(stringResource(R.string.clear), Color.Gray, {})
+            StandardButton(stringResource(R.string.clear), Color.Gray, {clearText()})
             StandardButton(stringResource(R.string.eog), Color.Gray, {})
         }
     }
-
 }
+
+
+/*@Composable
+fun Screen2() {
+    Column() {
+        Row
+
+    }
+}*/
 
 
 

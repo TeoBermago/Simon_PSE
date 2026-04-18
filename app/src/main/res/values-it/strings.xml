@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Simon</string>
+    <string name="red">rosso</string>
+    <string name="green">verde</string>
+    <string name="blue">blu</string>
+    <string name="magenta">magenta</string>
+    <string name="yellow">giallo</string>
+    <string name="cyan">ciano</string>
+    <string name="clear">cancella</string>
+    <string name="eog">fine partita</string>
+</resources>
