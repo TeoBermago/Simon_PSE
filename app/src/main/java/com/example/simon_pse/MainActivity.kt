@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+//import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.example.simon_pse.ui.theme.Simon_PSETheme
@@ -45,18 +45,52 @@ class MainActivity : ComponentActivity() {
         setContent {
             Simon_PSETheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    GameScreen(modifier = Modifier.padding(innerPadding))
+                    SimonApp(modifier = Modifier.padding(innerPadding))
                 }
             }
         }
     }
 
 }
+enum class AppScreen {
+    GAME,   // Screen 1
+    HISTORY // Screen 2
+}
+
 
 @Composable
-fun GameScreen(modifier: Modifier = Modifier) {
+fun SimonApp(modifier: Modifier = Modifier) {
+    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.GAME)} // Screen state
+    val games = rememberSaveable { mutableListOf<String>() }
+
+    when (currentScreen) {
+        AppScreen.GAME -> {
+            GameScreen(
+                modifier = modifier,
+                onEndGame = { gameString ->
+                    games.add(gameString) // add the game to the games history
+                    currentScreen = AppScreen.HISTORY
+                }
+            )
+        }
+        AppScreen.HISTORY -> {
+
+
+
+
+        }
+
+
+    }
+}
+
+@Composable
+fun GameScreen(
+    modifier: Modifier = Modifier,
+    onEndGame: (String) -> Unit
+) {
     val orientation = LocalConfiguration.current.orientation
-    var displayText by rememberSaveable { mutableStateOf<String>("") }
+    var displayText by rememberSaveable { mutableStateOf("") }
 
     if(orientation == Configuration.ORIENTATION_PORTRAIT) {
         Column(
@@ -66,18 +100,23 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorButtonsGrid(updateText = { newText ->
-                    displayText += newText
-                })
+                ColorButtonsGrid(updateText = { newText -> displayText += newText })
             }
 
             Row(
                 modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BottomScreen1(displayText, clearText = { ->
-                    displayText = ""
-                })
+                BottomScreen1(
+                    displayText,
+                    clearText = { displayText = "" },
+                    endGame = {
+                        if (displayText.isNotEmpty()) {
+                            onEndGame(displayText)
+                            displayText = ""
+                        }
+                    }
+                )
             }
         }
     }
@@ -88,18 +127,23 @@ fun GameScreen(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                ColorButtonsGrid(updateText = { newText ->
-                    displayText += newText
-                })
+                ColorButtonsGrid(updateText = { newText -> displayText += newText })
             }
 
             Column(
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                BottomScreen1(displayText, clearText = { ->
-                    displayText = ""
-                })
+                BottomScreen1(
+                    displayText,
+                    clearText = { displayText = "" },
+                    endGame = {
+                        if (displayText.isNotEmpty()) {
+                            onEndGame(displayText)
+                            displayText = ""
+                        }
+                    }
+                )
             }
         }
     }
@@ -130,19 +174,19 @@ fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
 @Composable
 fun ColorButtonsGrid(updateText: (String) -> Unit) {
     val buttons = listOf(
-        ButtonData(stringResource(R.string.red), Color.Red, {updateText("R, ")}),
-        ButtonData(stringResource(R.string.green), Color.Green, {updateText("G, ")}),
-        ButtonData(stringResource(R.string.blue), Color.Blue, {updateText("B, ")}),
-        ButtonData(stringResource(R.string.magenta), Color.Magenta, {updateText("M, ")}),
-        ButtonData(stringResource(R.string.yellow), Color.Yellow, {updateText("Y, ")}),
-        ButtonData(stringResource(R.string.cyan), Color.Cyan, {updateText("C, ")})
+        ButtonData(stringResource(R.string.red), Color.Red) { updateText("R, ") },
+        ButtonData(stringResource(R.string.green), Color.Green) {updateText("G, ")},
+        ButtonData(stringResource(R.string.blue), Color.Blue) {updateText("B, ")},
+        ButtonData(stringResource(R.string.magenta), Color.Magenta) {updateText("M, ")},
+        ButtonData(stringResource(R.string.yellow), Color.Yellow ) {updateText("Y, ")},
+        ButtonData(stringResource(R.string.cyan), Color.Cyan ) {updateText("C, ")}
     )
 
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(15.dp)
     ) {
-        // Dividiamo la lista in righe da 2
+        // Divide the list in rows of 2
         buttons.chunked(2).forEach { riga ->
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
@@ -161,7 +205,7 @@ fun ColorButtonsGrid(updateText: (String) -> Unit) {
 }
 
 @Composable
-fun BottomScreen1(text: String, clearText: () -> Unit) {
+fun BottomScreen1(text: String, clearText: () -> Unit, endGame: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -173,15 +217,15 @@ fun BottomScreen1(text: String, clearText: () -> Unit) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton(stringResource(R.string.clear), Color.Gray, {clearText()})
-            StandardButton(stringResource(R.string.eog), Color.Gray, {})
+            StandardButton(stringResource(R.string.clear), Color.Gray) {clearText()}
+            StandardButton(stringResource(R.string.eog), Color.Gray) {endGame()}
         }
     }
 }
 
 
 /*@Composable
-fun Screen2() {
+fun HistoryScreen() {
     Column() {
         Row
 
@@ -196,7 +240,7 @@ fun Screen2() {
 fun DashboardPreview() {
     Simon_PSETheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            GameScreen(modifier = Modifier.padding(innerPadding))
+            SimonApp(modifier = Modifier.padding(innerPadding))
         }
     }
 }
