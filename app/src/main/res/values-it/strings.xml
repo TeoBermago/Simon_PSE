@@ -7,6 +7,7 @@
     <string name="magenta">magenta</string>
     <string name="yellow">giallo</string>
     <string name="cyan">ciano</string>
-    <string name="clear">cancella</string>
-    <string name="eog">fine partita</string>
+    <string name="clear_button">cancella</string>
+    <string name="eog_button">fine partita</string>
+    <string name="back_button">indietro</string>
 </resources>

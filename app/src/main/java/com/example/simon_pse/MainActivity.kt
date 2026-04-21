@@ -32,6 +32,10 @@ import androidx.compose.runtime.mutableStateOf
 //import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -61,26 +65,27 @@ enum class AppScreen {
 @Composable
 fun SimonApp(modifier: Modifier = Modifier) {
     var currentScreen by rememberSaveable { mutableStateOf(AppScreen.GAME)} // Screen state
-    val games = rememberSaveable { mutableListOf<String>() }
+    var games by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     when (currentScreen) {
         AppScreen.GAME -> {
             GameScreen(
                 modifier = modifier,
                 onEndGame = { gameString ->
-                    games.add(gameString) // add the game to the games history
+                    games += gameString // add the game to the games history
                     currentScreen = AppScreen.HISTORY
                 }
             )
         }
         AppScreen.HISTORY -> {
-
-
-
-
+            HistoryScreen(
+                modifier = modifier,
+                games = games,
+                backButton = {
+                    currentScreen = AppScreen.GAME
+                }
+            )
         }
-
-
     }
 }
 
@@ -97,24 +102,22 @@ fun GameScreen(
             modifier = modifier.fillMaxWidth().fillMaxHeight()
         ) {
             Row(
-                modifier = modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ColorButtonsGrid(updateText = { newText -> displayText += newText })
             }
 
             Row(
-                modifier = modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BottomScreen1(
                     displayText,
                     clearText = { displayText = "" },
                     endGame = {
-                        if (displayText.isNotEmpty()) {
-                            onEndGame(displayText)
-                            displayText = ""
-                        }
+                        onEndGame(displayText)
+                        displayText = ""
                     }
                 )
             }
@@ -122,7 +125,7 @@ fun GameScreen(
     }
 
     if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
-        Row( modifier = modifier.fillMaxWidth().fillMaxHeight() ) {
+        Row( modifier = modifier.fillMaxSize() ) {
             Column(
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
@@ -138,10 +141,8 @@ fun GameScreen(
                     displayText,
                     clearText = { displayText = "" },
                     endGame = {
-                        if (displayText.isNotEmpty()) {
-                            onEndGame(displayText)
-                            displayText = ""
-                        }
+                        onEndGame(displayText)
+                        displayText = ""
                     }
                 )
             }
@@ -217,22 +218,99 @@ fun BottomScreen1(text: String, clearText: () -> Unit, endGame: () -> Unit) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton(stringResource(R.string.clear), Color.Gray) {clearText()}
-            StandardButton(stringResource(R.string.eog), Color.Gray) {endGame()}
+            StandardButton(stringResource(R.string.clear_button), Color.Gray) {clearText()}
+            StandardButton(stringResource(R.string.eog_button), Color.Gray) {endGame()}
         }
     }
 }
 
 
-/*@Composable
-fun HistoryScreen() {
-    Column() {
-        Row
+@Composable
+fun HistoryScreen(
+    modifier: Modifier = Modifier,
+    games: List<String>,
+    backButton: () -> Unit
+) {
+    val orientation = LocalConfiguration.current.orientation
+    BackHandler(onBack = backButton)
 
+    if(orientation == Configuration.ORIENTATION_PORTRAIT) {
+        Column(
+            modifier = modifier.fillMaxSize(),
+            //horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                GamesTable(games)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+            }
+        }
     }
-}*/
+    if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        Row(
+            modifier = modifier.fillMaxSize(),
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                GamesTable(games)
+            }
+            Column(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+            }
+        }
+    }
+}
 
+@Composable
+fun GamesTable(games: List<String>) {
+    Column(
+        modifier = Modifier.fillMaxSize()
 
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize()
+        ) {
+            items(games) { game ->
+                val buttonsClicked: Int = game.count { it == ',' }
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(
+                        10.dp,
+                        Alignment.CenterHorizontally
+                    )
+                ) {
+                    Text(
+                        text = "$buttonsClicked",
+                        modifier = Modifier.weight(0.3f)
+                    )
+
+                    Text(
+                        text = game,
+                        modifier = Modifier.weight(0.7f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+        }
+    }
+}
 
 
 @Preview(showBackground = true, showSystemUi = true)

@@ -7,6 +7,7 @@
     <string name="magenta">magenta</string>
     <string name="yellow">yellow</string>
     <string name="cyan">cyan</string>
-    <string name="clear">clear</string>
-    <string name="eog">end game</string>
+    <string name="clear_button">clear</string>
+    <string name="eog_button">end game</string>
+    <string name="back_button">back</string>
 </resources>
