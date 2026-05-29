@@ -34,8 +34,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -57,14 +62,15 @@ class MainActivity : ComponentActivity() {
 
 }
 enum class AppScreen {
-    GAME,   // Screen 1
-    HISTORY // Screen 2
+    HISTORY,                                                                                        // Lista delle Partite
+    GAME,                                                                                           // Schermata di Gioco
+    GAME_DETAIL                                                                                     // Dettaglio Partita
 }
 
-
+//Modulo di navigazioine
 @Composable
 fun SimonApp(modifier: Modifier = Modifier) {
-    var currentScreen by rememberSaveable { mutableStateOf(AppScreen.GAME)} // Screen state
+    var currentScreen by rememberSaveable {mutableStateOf(AppScreen.HISTORY)}                // Screen state
     var games by rememberSaveable { mutableStateOf(listOf<String>()) }
 
     when (currentScreen) {
@@ -78,7 +84,7 @@ fun SimonApp(modifier: Modifier = Modifier) {
             )
         }
         AppScreen.HISTORY -> {
-            HistoryScreen(
+            GamesList(
                 modifier = modifier,
                 games = games,
                 backButton = {
@@ -86,18 +92,22 @@ fun SimonApp(modifier: Modifier = Modifier) {
                 }
             )
         }
+        AppScreen.GAME_DETAIL -> {
+            GameDetailsScreen()
+        }
     }
 }
 
+//Schermata di gioco
 @Composable
-fun GameScreen(
+fun GameScreen(                                                                                     //SCHERMATA Schermata di gioco
     modifier: Modifier = Modifier,
     onEndGame: (String) -> Unit
 ) {
     val orientation = LocalConfiguration.current.orientation
     var displayText by rememberSaveable { mutableStateOf("") }
 
-    if(orientation == Configuration.ORIENTATION_PORTRAIT) {
+    if(orientation == Configuration.ORIENTATION_PORTRAIT) {     
         Column(
             modifier = modifier.fillMaxWidth().fillMaxHeight()
         ) {
@@ -112,7 +122,7 @@ fun GameScreen(
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                BottomScreen1(
+                BottomGameScreen(
                     displayText,
                     clearText = { displayText = "" },
                     endGame = {
@@ -137,7 +147,7 @@ fun GameScreen(
                 modifier = Modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                BottomScreen1(
+                BottomGameScreen(
                     displayText,
                     clearText = { displayText = "" },
                     endGame = {
@@ -173,7 +183,7 @@ fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
 }
 
 @Composable
-fun ColorButtonsGrid(updateText: (String) -> Unit) {
+fun ColorButtonsGrid(updateText: (String) -> Unit) {                                                //matrice di 6 bottoni colore(macro componente)
     val buttons = listOf(
         ButtonData(stringResource(R.string.red), Color.Red) { updateText("R, ") },
         ButtonData(stringResource(R.string.green), Color.Green) {updateText("G, ")},
@@ -206,7 +216,7 @@ fun ColorButtonsGrid(updateText: (String) -> Unit) {
 }
 
 @Composable
-fun BottomScreen1(text: String, clearText: () -> Unit, endGame: () -> Unit) {
+fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit) {                    //porzione inferiore schermata di gioco(macro componente)
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -223,10 +233,20 @@ fun BottomScreen1(text: String, clearText: () -> Unit, endGame: () -> Unit) {
         }
     }
 }
+//Schermata di gioco FINE
 
+//Lista delle partite
+@Composable
+fun Example(onClick: () -> Unit) {
+    FloatingActionButton(
+        onClick = { onClick() },
+    ) {
+        Icon(Icons.Filled.Add, "Floating action button.")
+    }
+}
 
 @Composable
-fun HistoryScreen(
+fun GamesList(                                                                                      //SCHERMATA Lista delle partite
     modifier: Modifier = Modifier,
     games: List<String>,
     backButton: () -> Unit
@@ -235,43 +255,63 @@ fun HistoryScreen(
     BackHandler(onBack = backButton)
 
     if(orientation == Configuration.ORIENTATION_PORTRAIT) {
-        Column(
-            modifier = modifier.fillMaxSize(),
-            //horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+        Box(modifier = modifier.fillMaxSize()) {
+            Column(
+                modifier = modifier.fillMaxSize(),
+                //horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                GamesTable(games)
+                Row(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    GamesTable(games)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    //StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+                    //Example(backButton)
+                }
             }
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp) // Distanza di sicurezza dai bordi dello schermo
             ) {
-                StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+                Example(onClick = backButton)
             }
         }
     }
     if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
-        Row(
-            modifier = modifier.fillMaxSize(),
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+        Box(modifier = modifier.fillMaxSize()) {
+            Row(
+                modifier = modifier.fillMaxSize(),
             ) {
-                GamesTable(games)
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    GamesTable(games)
+                }
+                Column(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    //StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+                    //Example(backButton)
+                }
             }
-            Column(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(16.dp) // Distanza di sicurezza dai bordi dello schermo
             ) {
-                StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
+                Example(onClick = backButton)
             }
         }
     }
@@ -311,7 +351,14 @@ fun GamesTable(games: List<String>) {
         }
     }
 }
+//Lista delle partite FINE
 
+//Dettaglio Partita
+@Composable
+fun GameDetailsScreen() {                                                                           //SCHRERMATA Dettaglio Partita
+    Text("Resoconto Partita")
+}
+//Dettaglio Partita FINE
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
