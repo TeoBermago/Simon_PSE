@@ -1,7 +1,6 @@
 package com.example.simon_pse
 
 
-//import android.app.GameState
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -48,7 +47,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.room.Room
+import com.example.simon_pse.data.GameEntity
+import com.example.simon_pse.data.GameDao
+import com.example.simon_pse.data.GameDatabase
+import kotlinx.coroutines.flow.emptyFlow
 import com.example.simon_pse.ui.theme.Simon_PSETheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -57,17 +64,26 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
+        val database = Room.databaseBuilder(
+            applicationContext,
+            GameDatabase::class.java,
+            "simon_database" // The name of the physical file on the phone
+        ).build()
+
+        val gameDao = database.gameDao()
+
         // Set and display the UI content
         setContent {
             Simon_PSETheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    SimonApp(modifier = Modifier.padding(innerPadding))
+                    SimonApp(modifier = Modifier.padding(innerPadding), gameDao)
                 }
             }
         }
     }
 
 }
+
 enum class AppScreen {
     HISTORY,                                                                                        // Lista delle Partite
     GAME,                                                                                           // Schermata di Gioco
@@ -76,7 +92,7 @@ enum class AppScreen {
 
 //Modulo di navigazioine
 @Composable
-fun SimonApp(modifier: Modifier = Modifier) {
+fun SimonApp(modifier: Modifier = Modifier, gameDao: GameDao) {
     var currentScreen by rememberSaveable {mutableStateOf(AppScreen.HISTORY)}                // Screen state
     var games by rememberSaveable { mutableStateOf(listOf<String>()) }
 
@@ -84,19 +100,20 @@ fun SimonApp(modifier: Modifier = Modifier) {
         AppScreen.GAME -> {
             GameScreen(
                 modifier = modifier,
-                onEndGame = { gameString ->
-                    games += gameString // add the game to the games history
-                    currentScreen = AppScreen.HISTORY
-                }
+                onEndGame = {
+                    currentScreen = AppScreen.HISTORY // Cambia schermata
+                },
+                gameDao = gameDao
             )
         }
         AppScreen.HISTORY -> {
             GamesList(
                 modifier = modifier,
                 games = games,
-                backButton = {
+                gameButton = {
                     currentScreen = AppScreen.GAME
-                }
+                },
+                gameDao = gameDao
             )
         }
         AppScreen.GAME_DETAIL -> {
@@ -109,7 +126,8 @@ fun SimonApp(modifier: Modifier = Modifier) {
 @Composable
 fun GameScreen(                                                                                     //SCHERMATA Schermata di gioco
     modifier: Modifier = Modifier,
-    onEndGame: (String) -> Unit
+    onEndGame: () -> Unit,
+    gameDao: GameDao
 ) {
     val orientation = LocalConfiguration.current.orientation
     var displayText by rememberSaveable { mutableStateOf("") }
@@ -120,6 +138,8 @@ fun GameScreen(                                                                 
     var isGamePaused by rememberSaveable { mutableStateOf(false) }                           //partita in pausa
     var litColor by remember { mutableStateOf<Char?>(null) }
     var showGameOverDialog by rememberSaveable { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
 
     val onColorClick: (Char) -> Unit = { color ->                                                   //filtro/logica tabella bottoni
         if(isGameStarted && !isComputerTurn && !isGamePaused) {                                     //partita in corso e non in pausa
@@ -157,13 +177,35 @@ fun GameScreen(                                                                 
         }
     }
 
+    val saveAndEndGame = {
+        isGameStarted = false
+
+        val finalSequence = generatedSequence.joinToString(", ")
+        val errorIdx = userClickIndex
+        val streak = if (generatedSequence.isEmpty()) 0 else generatedSequence.size - 1
+
+        scope.launch(Dispatchers.IO) {
+            val newGame = GameEntity(
+                sequence = finalSequence,
+                errorIndex = errorIdx,
+                longestStreak = streak
+            )
+            gameDao.insertGame(newGame)
+        }
+
+        onEndGame()
+        displayText = ""
+    }
+    BackHandler(enabled = true) {
+        saveAndEndGame()
+    }
+
     if (showGameOverDialog) {
         GameOverDialog(
             score = if (generatedSequence.isEmpty()) 0 else generatedSequence.size - 1,
             onDismiss = {
-                showGameOverDialog = false // Nasconde il popup
-                onEndGame(generatedSequence.joinToString(", ")) // Salva
-                displayText = "" // Pulisce lo schermo
+                showGameOverDialog = false
+                saveAndEndGame()
             }
         )
     }
@@ -189,11 +231,7 @@ fun GameScreen(                                                                 
                 BottomGameScreen(
                     displayText,
                     pause = {pauseState -> isGamePaused = pauseState},
-                    endGame = {
-                        val finalSequence = generatedSequence.joinToString(", ")
-                        onEndGame(finalSequence)
-                        displayText = ""
-                    },
+                    endGame = {saveAndEndGame()},
                     startGame = {
                         isGameStarted = true
                         generatedSequence = listOf(generateRandomColor())
@@ -227,11 +265,7 @@ fun GameScreen(                                                                 
                 BottomGameScreen(
                     displayText,
                     pause = {pauseState -> isGamePaused = pauseState },
-                    endGame = {
-                        val finalSequence = generatedSequence.joinToString(", ")
-                        onEndGame(finalSequence)
-                        displayText = ""
-                    },
+                    endGame = {saveAndEndGame()},
                     startGame = {
                         isGameStarted = true
                         generatedSequence = listOf(generateRandomColor())
@@ -383,15 +417,16 @@ fun OpenGameScreen(onClick: () -> Unit) {
 fun GamesList(                                                                                      //SCHERMATA Lista delle partite
     modifier: Modifier = Modifier,
     games: List<String>,
-    backButton: () -> Unit
+    gameButton: () -> Unit,
+    gameDao: GameDao
 ) {
     val orientation = LocalConfiguration.current.orientation
-    BackHandler(onBack = backButton)
+
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
-            OpenGameScreen(onClick = backButton)
+            OpenGameScreen(onClick = gameButton)
         }
     ){ innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
@@ -458,9 +493,15 @@ fun GameDetailsScreen() {                                                       
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DashboardPreview() {
+
+    val fakeDao = object : GameDao {
+        override suspend fun insertGame(game: GameEntity) { /* Non fa nulla */ }
+        override fun getAllGames() = emptyFlow<List<GameEntity>>() // Restituisce un flusso vuoto
+    }
+
     Simon_PSETheme {
         Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-            SimonApp(modifier = Modifier.padding(innerPadding))
+            SimonApp(modifier = Modifier.padding(innerPadding), gameDao = fakeDao)
         }
     }
 }
