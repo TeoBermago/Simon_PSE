@@ -7,7 +7,8 @@
     <string name="magenta">magenta</string>
     <string name="yellow">giallo</string>
     <string name="cyan">ciano</string>
-    <string name="clear_button">cancella</string>
+    <string name="pause_button">pausa</string>
+    <string name="resume_button">riprendi</string>
     <string name="eog_button">termina partita</string>
     <string name="sog_button">inizio partita</string>
     <string name="back_button">indietro</string>

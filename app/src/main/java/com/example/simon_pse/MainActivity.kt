@@ -1,6 +1,7 @@
 package com.example.simon_pse
 
 
+//import android.app.GameState
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,7 +30,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import android.content.res.Configuration
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-//import androidx.compose.runtime.remember
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,7 +42,12 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.AlertDialog
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -112,6 +118,55 @@ fun GameScreen(                                                                 
     var isGameStarted by rememberSaveable { mutableStateOf(false) }                          //stato della partita(attiva o no)
     var isComputerTurn by rememberSaveable { mutableStateOf(false) }                         //il computer sta mostrando una sequenza
     var isGamePaused by rememberSaveable { mutableStateOf(false) }                           //partita in pausa
+    var litColor by remember { mutableStateOf<Char?>(null) }
+    var showGameOverDialog by rememberSaveable { mutableStateOf(false) }
+
+    val onColorClick: (Char) -> Unit = { color ->                                                   //filtro/logica tabella bottoni
+        if(isGameStarted && !isComputerTurn && !isGamePaused) {                                     //partita in corso e non in pausa
+            if (color == generatedSequence[userClickIndex]) {                                       //pressione tasto corretto
+                displayText += "$color, "
+                if(++userClickIndex == generatedSequence.size) {                                    //l'utente ha completato la sequenza(già corretta)
+                    generatedSequence = generatedSequence + generateRandomColor()
+                    userClickIndex = 0
+                    isComputerTurn = true // Passa il turno al computer
+                }
+            }
+            else {
+                isGameStarted = false
+                showGameOverDialog = true // Fa apparire il popup di errore
+            }
+        }
+    }
+
+    LaunchedEffect(isComputerTurn) {
+        if (isComputerTurn) {
+            delay(500)
+            displayText = "" // Il testo è vuoto durante la proposta
+
+            for (color in generatedSequence) {
+                if (!isGameStarted) break
+                while (isGamePaused) delay(100)
+
+                litColor = color // Colore da accendere
+                delay(800)
+                litColor = null  // Ritornan normale
+                delay(300)
+            }
+
+            isComputerTurn = false // Passa il turno al giocatore
+        }
+    }
+
+    if (showGameOverDialog) {
+        GameOverDialog(
+            score = if (generatedSequence.isEmpty()) 0 else generatedSequence.size - 1,
+            onDismiss = {
+                showGameOverDialog = false // Nasconde il popup
+                onEndGame(generatedSequence.joinToString(", ")) // Salva
+                displayText = "" // Pulisce lo schermo
+            }
+        )
+    }
 
     if(orientation == Configuration.ORIENTATION_PORTRAIT) {     
         Column(
@@ -121,7 +176,10 @@ fun GameScreen(                                                                 
                 modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                ColorButtonsGrid(updateText = { newText -> displayText += newText })
+                ColorButtonsGrid(
+                    onColorClick = onColorClick,
+                    litColor
+                )
             }
 
             Row(
@@ -130,12 +188,21 @@ fun GameScreen(                                                                 
             ) {
                 BottomGameScreen(
                     displayText,
-                    clearText = { displayText = "" },
+                    pause = {pauseState -> isGamePaused = pauseState},
                     endGame = {
-                        onEndGame(displayText)
+                        val finalSequence = generatedSequence.joinToString(", ")
+                        onEndGame(finalSequence)
                         displayText = ""
                     },
-                    startGame = {isGameStarted = true}
+                    startGame = {
+                        isGameStarted = true
+                        generatedSequence = listOf(generateRandomColor())
+                        userClickIndex = 0
+                        isComputerTurn = true
+                    },
+                    isGameStarted,
+                    isGamePaused,
+                    isComputerTurn
                 )
             }
         }
@@ -147,7 +214,10 @@ fun GameScreen(                                                                 
                 modifier = modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
-                ColorButtonsGrid(updateText = { newText -> displayText += newText })
+                ColorButtonsGrid(
+                    onColorClick = onColorClick,
+                    litColor
+                )
             }
 
             Column(
@@ -156,12 +226,21 @@ fun GameScreen(                                                                 
             ) {
                 BottomGameScreen(
                     displayText,
-                    clearText = { displayText = "" },
+                    pause = {pauseState -> isGamePaused = pauseState },
                     endGame = {
-                        onEndGame(displayText)
+                        val finalSequence = generatedSequence.joinToString(", ")
+                        onEndGame(finalSequence)
                         displayText = ""
                     },
-                    startGame = {isGameStarted = true}
+                    startGame = {
+                        isGameStarted = true
+                        generatedSequence = listOf(generateRandomColor())
+                        userClickIndex = 0
+                        isComputerTurn = true
+                    },
+                    isGameStarted,
+                    isGamePaused,
+                    isComputerTurn
                 )
             }
         }
@@ -171,34 +250,56 @@ fun GameScreen(                                                                 
 data class ButtonData(
     val text: String,
     val backgroundColor: Color,
+    val id: Char,
     val onClick: () -> Unit
 )
 
 @Composable
-fun StandardButton(text: String, backgroundColor: Color,enabled: Boolean = true, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        // Set a standard size
-        modifier = Modifier.width(120.dp).height(50.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = backgroundColor,
-            contentColor = Color.Black // Text color
-
-        )
-    ) {
-        Text(text)
+fun StandardButton(
+        text: String,
+        backgroundColor: Color,
+        enabled: Boolean = true,
+        isHighlighted: Boolean = false, // Evidenzia il bottone quando mostra la sequenza
+        onClick: () -> Unit) {
+    if(isHighlighted){
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            border = BorderStroke(4.dp, backgroundColor),
+            modifier = Modifier.width(120.dp).height(50.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = backgroundColor, // Text color
+            )
+        ) {
+            Text(text)
+        }
+    }
+    else {
+        Button(
+            onClick = onClick,
+            enabled = enabled,
+            modifier = Modifier.width(120.dp).height(50.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = backgroundColor,
+                contentColor = Color.Black, // Text color
+                disabledContainerColor = Color.LightGray,
+                disabledContentColor = Color.DarkGray
+            )
+        ) {
+            Text(text)
+        }
     }
 }
 
 @Composable
-fun ColorButtonsGrid(updateText: (String) -> Unit) {                                                //matrice di 6 bottoni colore(macro componente)
+fun ColorButtonsGrid(onColorClick: (Char) -> Unit, litColor: Char?) {                               //matrice di 6 bottoni colore(macro componente)
     val buttons = listOf(
-        ButtonData(stringResource(R.string.red), Color.Red) { updateText("R") },
-        ButtonData(stringResource(R.string.green), Color.Green) {updateText("G")},
-        ButtonData(stringResource(R.string.blue), Color.Blue) {updateText("B")},
-        ButtonData(stringResource(R.string.magenta), Color.Magenta) {updateText("M")},
-        ButtonData(stringResource(R.string.yellow), Color.Yellow ) {updateText("Y")},
-        ButtonData(stringResource(R.string.cyan), Color.Cyan ) {updateText("C")}
+        ButtonData(stringResource(R.string.red), Color.Red, 'R') { onColorClick('R') },
+        ButtonData(stringResource(R.string.green), Color.Green, 'G') {onColorClick('G')},
+        ButtonData(stringResource(R.string.blue), Color.Blue, 'B') {onColorClick('B')},
+        ButtonData(stringResource(R.string.magenta), Color.Magenta, 'M') {onColorClick('M')},
+        ButtonData(stringResource(R.string.yellow), Color.Yellow, 'Y') {onColorClick('Y')},
+        ButtonData(stringResource(R.string.cyan), Color.Cyan, 'C') {onColorClick('C')}
     )
 
     Column(
@@ -210,10 +311,11 @@ fun ColorButtonsGrid(updateText: (String) -> Unit) {                            
             Row(modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
             ) {
-                riga.forEach { (title, color, action) ->
+                riga.forEach { (title, color, id, action) ->
                     StandardButton(
                         text = title,
                         backgroundColor = color,
+                        isHighlighted = (id == litColor),
                         onClick = action
                     )
                 }
@@ -225,7 +327,7 @@ fun ColorButtonsGrid(updateText: (String) -> Unit) {                            
 
 //porzione inferiore schermata di gioco(macro componente)
 @Composable
-fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit, startGame: () -> Unit) {
+fun BottomGameScreen(text: String, pause: (Boolean) -> Unit, endGame: () -> Unit, startGame: () -> Unit, isGameStarted: Boolean, isGamePaused: Boolean, isComputerTurn: Boolean) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -237,9 +339,14 @@ fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit, s
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton(stringResource(R.string.sog_button), Color.Gray) {startGame()}
-            StandardButton(stringResource(R.string.clear_button), Color.Gray) {clearText()}
-            StandardButton(stringResource(R.string.eog_button), Color.Gray) {endGame()}
+            StandardButton(stringResource(R.string.sog_button), Color.Gray,!isGameStarted) {startGame()}
+            if (!isGamePaused) {
+                StandardButton(stringResource(R.string.pause_button), Color.Gray,isComputerTurn) {pause(true)}
+            }
+            else {
+                StandardButton(stringResource(R.string.resume_button), Color.Gray,isComputerTurn) {pause(false)}
+            }
+            StandardButton(stringResource(R.string.eog_button), Color.Gray,isGameStarted) {endGame()}
         }
     }
 }
@@ -249,14 +356,22 @@ fun generateRandomColor(): Char {
     return colors.random()
 }
 
-fun colorClick(colorPressed: Char) {
-    //if() {}
+@Composable
+fun GameOverDialog(score: Int, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss, // Se l'utente tocca fuori dal popup
+        title = { Text("Game Over!") },
+        text = { Text("Hai sbagliato! Colori indovinati: $score") },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("OK") }
+        }
+    )
 }
 //Schermata di gioco FINE
 
 //Lista delle partite
 @Composable
-fun Example(onClick: () -> Unit) {
+fun OpenGameScreen(onClick: () -> Unit) {
     FloatingActionButton(
         onClick = { onClick() },
     ) {
@@ -276,7 +391,7 @@ fun GamesList(                                                                  
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
-            Example(onClick = backButton)
+            OpenGameScreen(onClick = backButton)
         }
     ){ innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
