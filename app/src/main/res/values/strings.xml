@@ -9,5 +9,6 @@
     <string name="cyan">cyan</string>
     <string name="clear_button">clear</string>
     <string name="eog_button">end game</string>
+    <string name="sog_button">start game</string>
     <string name="back_button">back</string>
 </resources>

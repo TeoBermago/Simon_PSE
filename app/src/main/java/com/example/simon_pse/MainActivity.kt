@@ -41,6 +41,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.mutableIntStateOf
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 
 class MainActivity : ComponentActivity() {
@@ -106,20 +107,25 @@ fun GameScreen(                                                                 
 ) {
     val orientation = LocalConfiguration.current.orientation
     var displayText by rememberSaveable { mutableStateOf("") }
+    var generatedSequence by rememberSaveable { mutableStateOf(listOf<Char>()) }             //sequenza di bottoni da premere
+    var userClickIndex by rememberSaveable { mutableIntStateOf(0) }                          //indice posizione nella sequenza generata
+    var isGameStarted by rememberSaveable { mutableStateOf(false) }                          //stato della partita(attiva o no)
+    var isComputerTurn by rememberSaveable { mutableStateOf(false) }                         //il computer sta mostrando una sequenza
+    var isGamePaused by rememberSaveable { mutableStateOf(false) }                           //partita in pausa
 
     if(orientation == Configuration.ORIENTATION_PORTRAIT) {     
         Column(
             modifier = modifier.fillMaxWidth().fillMaxHeight()
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ColorButtonsGrid(updateText = { newText -> displayText += newText })
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = modifier.fillMaxWidth().weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 BottomGameScreen(
@@ -128,7 +134,8 @@ fun GameScreen(                                                                 
                     endGame = {
                         onEndGame(displayText)
                         displayText = ""
-                    }
+                    },
+                    startGame = {isGameStarted = true}
                 )
             }
         }
@@ -137,14 +144,14 @@ fun GameScreen(                                                                 
     if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
         Row( modifier = modifier.fillMaxSize() ) {
             Column(
-                modifier = Modifier.fillMaxHeight().weight(1f),
+                modifier = modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 ColorButtonsGrid(updateText = { newText -> displayText += newText })
             }
 
             Column(
-                modifier = Modifier.fillMaxHeight().weight(1f),
+                modifier = modifier.fillMaxHeight().weight(1f),
                 verticalArrangement = Arrangement.Center
             ) {
                 BottomGameScreen(
@@ -153,7 +160,8 @@ fun GameScreen(                                                                 
                     endGame = {
                         onEndGame(displayText)
                         displayText = ""
-                    }
+                    },
+                    startGame = {isGameStarted = true}
                 )
             }
         }
@@ -167,7 +175,7 @@ data class ButtonData(
 )
 
 @Composable
-fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
+fun StandardButton(text: String, backgroundColor: Color,enabled: Boolean = true, onClick: () -> Unit) {
     Button(
         onClick = onClick,
         // Set a standard size
@@ -185,12 +193,12 @@ fun StandardButton(text: String, backgroundColor: Color, onClick: () -> Unit) {
 @Composable
 fun ColorButtonsGrid(updateText: (String) -> Unit) {                                                //matrice di 6 bottoni colore(macro componente)
     val buttons = listOf(
-        ButtonData(stringResource(R.string.red), Color.Red) { updateText("R, ") },
-        ButtonData(stringResource(R.string.green), Color.Green) {updateText("G, ")},
-        ButtonData(stringResource(R.string.blue), Color.Blue) {updateText("B, ")},
-        ButtonData(stringResource(R.string.magenta), Color.Magenta) {updateText("M, ")},
-        ButtonData(stringResource(R.string.yellow), Color.Yellow ) {updateText("Y, ")},
-        ButtonData(stringResource(R.string.cyan), Color.Cyan ) {updateText("C, ")}
+        ButtonData(stringResource(R.string.red), Color.Red) { updateText("R") },
+        ButtonData(stringResource(R.string.green), Color.Green) {updateText("G")},
+        ButtonData(stringResource(R.string.blue), Color.Blue) {updateText("B")},
+        ButtonData(stringResource(R.string.magenta), Color.Magenta) {updateText("M")},
+        ButtonData(stringResource(R.string.yellow), Color.Yellow ) {updateText("Y")},
+        ButtonData(stringResource(R.string.cyan), Color.Cyan ) {updateText("C")}
     )
 
     Column(
@@ -215,8 +223,9 @@ fun ColorButtonsGrid(updateText: (String) -> Unit) {                            
 
 }
 
+//porzione inferiore schermata di gioco(macro componente)
 @Composable
-fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit) {                    //porzione inferiore schermata di gioco(macro componente)
+fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit, startGame: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -228,10 +237,20 @@ fun BottomGameScreen(text: String, clearText: () -> Unit, endGame: () -> Unit) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
+            StandardButton(stringResource(R.string.sog_button), Color.Gray) {startGame()}
             StandardButton(stringResource(R.string.clear_button), Color.Gray) {clearText()}
             StandardButton(stringResource(R.string.eog_button), Color.Gray) {endGame()}
         }
     }
+}
+
+fun generateRandomColor(): Char {
+    val colors = listOf('R', 'G', 'B', 'M', 'Y', 'C')
+    return colors.random()
+}
+
+fun colorClick(colorPressed: Char) {
+    //if() {}
 }
 //Schermata di gioco FINE
 
@@ -254,64 +273,25 @@ fun GamesList(                                                                  
     val orientation = LocalConfiguration.current.orientation
     BackHandler(onBack = backButton)
 
-    if(orientation == Configuration.ORIENTATION_PORTRAIT) {
-        Box(modifier = modifier.fillMaxSize()) {
-            Column(
-                modifier = modifier.fillMaxSize(),
-                //horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    GamesTable(games)
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    //StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
-                    //Example(backButton)
-                }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp) // Distanza di sicurezza dai bordi dello schermo
-            ) {
-                Example(onClick = backButton)
-            }
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        floatingActionButton = {
+            Example(onClick = backButton)
         }
-    }
-    if(orientation == Configuration.ORIENTATION_LANDSCAPE) {
-        Box(modifier = modifier.fillMaxSize()) {
-            Row(
-                modifier = modifier.fillMaxSize(),
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    GamesTable(games)
+    ){ innerPadding ->
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        GamesTable(games)
+                    }
                 }
-                Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    //StandardButton(stringResource(R.string.back_button), Color.Gray) {backButton()}
-                    //Example(backButton)
+            } else {
+                Row(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxHeight().weight(1f)) {
+                        GamesTable(games)
+                    }
                 }
-            }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp) // Distanza di sicurezza dai bordi dello schermo
-            ) {
-                Example(onClick = backButton)
             }
         }
     }
