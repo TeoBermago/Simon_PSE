@@ -9,7 +9,7 @@ class SoundManager(context: Context) {
 
     // Mappa per associare ogni carattere (es. 'R') al suo file audio caricato in memoria
     private val soundMap = mutableMapOf<Char, Int>()
-    private var errorSoundId: Int = 0
+    //private var errorSoundId: Int = 0
 
     init {
         // Carichiamo i file in memoria all'avvio dell'app!
@@ -30,9 +30,9 @@ class SoundManager(context: Context) {
         }
     }
 
-    fun playError() {
+    /*fun playError() {
         soundPool.play(errorSoundId, 1f, 1f, 1, 0, 1f)
-    }
+    }*/
 
     // Libera la memoria quando l'app viene chiusa
     fun release() {
