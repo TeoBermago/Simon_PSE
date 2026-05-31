@@ -12,4 +12,7 @@
     <string name="eog_button">termina partita</string>
     <string name="sog_button">inizio partita</string>
     <string name="back_button">indietro</string>
+    <string name="game_over">Hai perso</string>
+    <string name="dialog_message">Hai sbagliato! Colori indovinati:</string>
+    <string name="ok">OK</string>
 </resources>

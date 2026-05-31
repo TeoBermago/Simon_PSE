@@ -12,4 +12,7 @@
     <string name="eog_button">end game</string>
     <string name="sog_button">start game</string>
     <string name="back_button">back</string>
+    <string name="game_over">Game over</string>
+    <string name="dialog_message">You failed! Your score is:</string>
+    <string name="ok">OK</string>
 </resources>
