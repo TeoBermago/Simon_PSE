@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 interface GameDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertGame(game: GameEntity)
+    fun insertGame(game: GameEntity)
 
     @Query("SELECT * FROM games_table ORDER BY timestamp DESC")
     fun getAllGames(): Flow<List<GameEntity>>

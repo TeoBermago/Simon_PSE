@@ -45,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.rememberCoroutineScope
@@ -53,9 +54,18 @@ import com.example.simon_pse.data.GameEntity
 import com.example.simon_pse.data.GameDao
 import com.example.simon_pse.data.GameDatabase
 import kotlinx.coroutines.flow.emptyFlow
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import com.example.simon_pse.ui.theme.Simon_PSETheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.collections.drop
+import kotlin.collections.joinToString
+import kotlin.collections.take
 
 class MainActivity : ComponentActivity() {
 
@@ -94,7 +104,7 @@ enum class AppScreen {
 @Composable
 fun SimonApp(modifier: Modifier = Modifier, gameDao: GameDao) {
     var currentScreen by rememberSaveable {mutableStateOf(AppScreen.HISTORY)}                // Screen state
-    var games by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var selectedGame by remember { mutableStateOf<GameEntity?>(null) }
 
     when (currentScreen) {
         AppScreen.GAME -> {
@@ -109,15 +119,24 @@ fun SimonApp(modifier: Modifier = Modifier, gameDao: GameDao) {
         AppScreen.HISTORY -> {
             GamesList(
                 modifier = modifier,
-                games = games,
                 gameButton = {
                     currentScreen = AppScreen.GAME
+                },
+                onGameClick = { clickedGame ->
+                    selectedGame = clickedGame // Salvo la partita
+                    currentScreen = AppScreen.GAME_DETAIL // Cambio pagina
                 },
                 gameDao = gameDao
             )
         }
         AppScreen.GAME_DETAIL -> {
-            GameDetailsScreen()
+            selectedGame?.let { game ->
+                GameDetailsScreen(
+                    modifier = modifier,
+                    game = game,
+                    gameButton = { currentScreen = AppScreen.HISTORY }
+                )
+            }
         }
     }
 }
@@ -180,17 +199,18 @@ fun GameScreen(                                                                 
     val saveAndEndGame = {
         isGameStarted = false
 
-        val finalSequence = generatedSequence.joinToString(", ")
-        val errorIdx = userClickIndex
-        val streak = if (generatedSequence.isEmpty()) 0 else generatedSequence.size - 1
+        if (generatedSequence.size > 1 || (generatedSequence.size == 1 && !isComputerTurn)) {
+            val errorIdx = userClickIndex
+            val streak = if (generatedSequence.isEmpty()) 0 else generatedSequence.size - 1
 
-        scope.launch(Dispatchers.IO) {
-            val newGame = GameEntity(
-                sequence = finalSequence,
-                errorIndex = errorIdx,
-                longestStreak = streak
-            )
-            gameDao.insertGame(newGame)
+            scope.launch(Dispatchers.IO) {
+                val newGame = GameEntity(
+                    sequence = generatedSequence.toString(),
+                    errorIndex = errorIdx,
+                    longestStreak = streak
+                )
+                gameDao.insertGame(newGame)
+            }
         }
 
         onEndGame()
@@ -416,12 +436,13 @@ fun OpenGameScreen(onClick: () -> Unit) {
 @Composable
 fun GamesList(                                                                                      //SCHERMATA Lista delle partite
     modifier: Modifier = Modifier,
-    games: List<String>,
     gameButton: () -> Unit,
+    onGameClick: (GameEntity) -> Unit,
     gameDao: GameDao
 ) {
     val orientation = LocalConfiguration.current.orientation
 
+    val gamesList by gameDao.getAllGames().collectAsState(initial = emptyList())
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -433,13 +454,13 @@ fun GamesList(                                                                  
             if (orientation == Configuration.ORIENTATION_PORTRAIT) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                        GamesTable(games)
+                        GamesTable(gamesList, onGameClick = onGameClick )
                     }
                 }
             } else {
                 Row(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxHeight().weight(1f)) {
-                        GamesTable(games)
+                        GamesTable(gamesList, onGameClick = onGameClick)
                     }
                 }
             }
@@ -447,31 +468,59 @@ fun GamesList(                                                                  
     }
 }
 
+fun gameString (game: GameEntity): AnnotatedString {
+    val sequence = game.sequence.split(',') //Split perchè il toString della lista di caratteri formatta [R, ...}
+    val errorIndex = game.errorIndex
+
+    val lastGameString = buildAnnotatedString {
+        // Testo NERO (indovinato)
+        append(sequence.take(errorIndex).joinToString(", "))
+
+        if (errorIndex > 0 && errorIndex < sequence.size) {
+            append(", ")
+        }
+
+        // Testo ROSSO (sbagliato)
+        withStyle(style = SpanStyle(color = Color.Red)) {
+            append(sequence.drop(errorIndex).joinToString(", "))
+        }
+    }
+
+    return lastGameString
+}
+
 @Composable
-fun GamesTable(games: List<String>) {
+fun GamesTable(
+    games: List<GameEntity>,
+    onGameClick: (GameEntity) -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxSize()
-
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize()
         ) {
             items(games) { game ->
-                val buttonsClicked: Int = game.count { it == ',' }
+                val longestStreak: Int = game.longestStreak
+                val lastGameString = gameString(game)
+
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .clickable { onGameClick(game) },
                     horizontalArrangement = Arrangement.spacedBy(
                         10.dp,
                         Alignment.CenterHorizontally
                     )
                 ) {
                     Text(
-                        text = "$buttonsClicked",
+                        text = "$longestStreak",
                         modifier = Modifier.weight(0.3f)
                     )
 
                     Text(
-                        text = game,
+                        text = lastGameString,
                         modifier = Modifier.weight(0.7f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -485,8 +534,51 @@ fun GamesTable(games: List<String>) {
 
 //Dettaglio Partita
 @Composable
-fun GameDetailsScreen() {                                                                           //SCHRERMATA Dettaglio Partita
-    Text("Resoconto Partita")
+fun GameDetailsScreen(                                                                              //SCHRERMATA Dettaglio Partita
+    modifier: Modifier = Modifier,
+    game: GameEntity,
+    gameButton: () -> Unit
+) {
+    BackHandler(enabled = true) {
+        gameButton()
+    }
+
+    val orientation = LocalConfiguration.current.orientation
+    val longestStreak: Int = game.longestStreak
+    val lastGameString = gameString(game)
+
+    Scaffold(
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
+
+        Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            if (orientation == Configuration.ORIENTATION_PORTRAIT) {
+                Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Text(
+                        text = "$longestStreak",
+                        modifier = Modifier.weight(0.3f)
+                    )
+
+                    Text(
+                        text = lastGameString,
+                        modifier = Modifier.weight(0.7f),
+                    )
+                }
+            } else {
+                Row(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Text(
+                        text = "$longestStreak",
+                        modifier = Modifier.weight(0.3f)
+                    )
+
+                    Text(
+                        text = lastGameString,
+                        modifier = Modifier.weight(0.7f),
+                    )
+                }
+            }
+        }
+    }
 }
 //Dettaglio Partita FINE
 
@@ -495,7 +587,7 @@ fun GameDetailsScreen() {                                                       
 fun DashboardPreview() {
 
     val fakeDao = object : GameDao {
-        override suspend fun insertGame(game: GameEntity) { /* Non fa nulla */ }
+        override fun insertGame(game: GameEntity) { }
         override fun getAllGames() = emptyFlow<List<GameEntity>>() // Restituisce un flusso vuoto
     }
 
