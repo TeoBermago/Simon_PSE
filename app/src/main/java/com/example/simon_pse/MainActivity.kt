@@ -172,7 +172,7 @@ fun GameScreen(                                                                 
     var showGameOverDialog by rememberSaveable { mutableStateOf(false) } // Mostra dialogo si errore
     val scope = rememberCoroutineScope()
     var hasGameBeenStarted by rememberSaveable { mutableStateOf(false) } // La partita è mai stata iniziata(così avvia non si riattiva dopo che una partita è terminata)
-
+    var computerTurnIndex by rememberSaveable { mutableIntStateOf(0) }
 
     val onColorClick: (Char) -> Unit = { color ->                                                   //filtro/logica tabella bottoni
         if(isGameStarted && !isComputerTurn && !isGamePaused) {                                     //partita in corso e non in pausa
@@ -189,11 +189,13 @@ fun GameScreen(                                                                 
                 if(++userClickIndex == generatedSequence.size) {                                    //l'utente ha completato la sequenza(già corretta)
                     generatedSequence = generatedSequence + generateRandomColor()
                     userClickIndex = 0
+
+                    computerTurnIndex = 0
+
                     isComputerTurn = true // Passa il turno al computer
                 }
             }
             else {
-                hasGameBeenStarted = false
                 isGameStarted = false
                 showGameOverDialog = true // Fa apparire il popup di errore
             }
@@ -202,12 +204,14 @@ fun GameScreen(                                                                 
 
     LaunchedEffect(isComputerTurn) {
         if (isComputerTurn) {
-            delay(500)// Per non fari inziziare istantaneamnte la sequenza del computer dopo che l'utente ha finito
+
+            if(computerTurnIndex == 0) { delay(500) } // Per non fari inziziare istantaneamnte la sequenza del computer dopo che l'utente ha finito
             displayText = "" // Il testo è vuoto durante la proposta
 
-            for (color in generatedSequence) {
+            while (computerTurnIndex < generatedSequence.size) {
                 if (!isGameStarted) break
                 while (isGamePaused) delay(100)
+                val color = generatedSequence[computerTurnIndex++]
 
                 litColor = color // Colore da accendere
                 soundManager.playColor(color)
@@ -216,6 +220,7 @@ fun GameScreen(                                                                 
                 delay(300)
             }
 
+            computerTurnIndex = 0
             isComputerTurn = false // Passa il turno al giocatore
         }
     }
@@ -282,6 +287,9 @@ fun GameScreen(                                                                 
                         hasGameBeenStarted = true
                         generatedSequence = listOf(generateRandomColor())
                         userClickIndex = 0
+
+                        computerTurnIndex = 0
+
                         isComputerTurn = true
                     },
                     isGameStarted,
@@ -318,6 +326,9 @@ fun GameScreen(                                                                 
                         hasGameBeenStarted = true
                         generatedSequence = listOf(generateRandomColor())
                         userClickIndex = 0
+
+                        computerTurnIndex = 0
+
                         isComputerTurn = true
                     },
                     isGameStarted,
@@ -453,7 +464,11 @@ fun BottomGameScreen(
         Row(
             horizontalArrangement = Arrangement.spacedBy(15.dp)
         ) {
-            StandardButton(stringResource(R.string.eog_button), Color.Gray,isGameStarted) {endGame()}
+            StandardButton(
+                stringResource(R.string.eog_button),
+                Color.Gray,
+                isGameStarted) {endGame()
+            }
         }
     }
 }
